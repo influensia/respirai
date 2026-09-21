@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISPA-Predict Command Center V2</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    
+    <!-- Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.292.0/dist/umd/lucide.min.js"></script>
+
+    <!-- Leaflet CSS untuk Peta Real -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <style>
+        :root {
+            --bg-dark: #07111f;
+            --panel-bg: rgba(15, 34, 57, 0.95);
+            --line-color: rgba(112, 169, 223, 0.2);
+            --text-main: #e9f4ff;
+            --text-muted: #8fa9bd;
+            --accent-blue: #38bdf8;
+            --accent-green: #49e8a4;
+            --accent-red: #ff4d5c;
+            --accent-yellow: #eab308;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: "DM Sans", sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .mono { font-family: "Space Mono", monospace; }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: #050d18;
+            border-bottom: 1px solid var(--line-color);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 350px;
+            gap: 20px;
+            padding: 20px;
+            flex: 1;
+            height: calc(100vh - 80px); /* Kurangi tinggi header */
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--line-color);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .panel-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--line-color);
+            background: rgba(3, 12, 23, 0.5);
+        }
+
+        .toggle-container {
+            display: flex;
+            background: #030c17;
+            border-radius: 8px;
+            padding: 4px;
+            margin: 15px 20px;
+            border: 1px solid var(--line-color);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            color: var(--text-muted);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-blue);
+            color: #000;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .metric-card {
+            background: rgba(2, 14, 27, 0.6);
+            border: 1px solid rgba(123, 173, 214, 0.15);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 0 20px 15px;
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        .metric-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-val {
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 5px;
+            font-family: "Space Mono", monospace;
+        }
+
+        .metric-card.danger { border-left: 4px solid var(--accent-red); background: rgba(255, 77, 92, 0.05); }
+        .metric-card.warning { border-left: 4px solid var(--accent-yellow); background: rgba(234, 179, 8, 0.05); }
+
+        .btn-insight {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-insight:hover {
+            background: var(--accent-blue);
+            color: #000;
+            transform: scale(1.1);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            background: #000;
+            z-index: 1;
+        }
+
+        .map-wrapper {
+            flex: 1;
+            padding: 15px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Modifikasi Popup Peta Leaflet agar Dark Mode */
+        .leaflet-popup-content-wrapper { background: #1a2332; color: #fff; border: 1px solid var(--accent-blue); }
+        .leaflet-popup-tip { background: #1a2332; border: 1px solid var(--accent-blue); }
+        .leaflet-container a.leaflet-popup-close-button { color: #fff; }
+
+        .context-box {
+            background: rgba(109, 22, 37, 0.2);
+            border-left: 4px solid var(--accent-red);
+            padding: 15px;
+            margin: 15px 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .supply-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--line-color);
+        }
+
+        .supply-icon {
+            width: 40px; height: 40px;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-blue);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .action-btn {
+            background: var(--accent-green);
+            color: #000;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 18px;
+            border: none;
+            border-radius: 8px;
+            width: calc(100% - 40px);
+            margin: auto 20px 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(73, 232, 164, 0.3);
+            transition: all 0.2s;
+        }
+        .action-btn:hover { background: #3be09b; transform: translateY(-2px); }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        
+        .modal-box {
+            background: #101824; border: 1px solid var(--accent-blue);
+            border-radius: 12px; width: 500px; max-width: 90%; padding: 30px;
+            transform: translateY(20px); transition: transform 0.3s;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-overlay.active .modal-box { transform: translateY(0); }
+
+        .modal-header { font-size: 20px; font-weight: bold; color: var(--accent-blue); margin-bottom: 15px; display: flex; align-items: center; gap:10px;}
+        .modal-body { font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-bottom: 25px; }
+        .modal-close { background: var(--line-color); color: #fff; padding: 10px 20px; border-radius: 6px; width: 100%; border: none; font-weight: bold; cursor: pointer; transition: 0.2s;}
+        .modal-close:hover { background: #2b3b4f; }
+
+        .fade-update { animation: flashData 0.5s ease-out; }
+        @keyframes flashData { 0% { opacity: 0; transform: translateY(-5px); color: var(--accent-green); } 100% { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded bg-[#1f72a72b] border border-[#38bdf8a6] flex items-center justify-center text-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.3)]">
+                <i data-lucide="cross"></i>
+            </div>
+            <div>
+                <div class="text-[10px] text-[#74cfff] uppercase tracking-widest mono mb-1">Gugus Tugas Smart City Kalbar</div>
+                <h1 class="text-xl font-bold text-white m-0 tracking-wide">ISPA-Predict Command Center</h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-[#49e8a4] shadow-[0_0_10px_#49e8a4] animate-pulse"></div>
+                <span class="text-xs font-bold text-[#49e8a4] mono">SISTEM AKTIF</span>
+            </div>
+            <div class="text-xs text-[#8fa9bd] mono">Pembaruan: Real-time via BMKG & Dinkes</div>
+        </div>
+    </header>
+
+    <main class="main-layout">
+        <aside class="panel">
+            <div class="panel-header">
+                <h2 class="text-[14px] text-[#eef8ff] font-bold m-0 uppercase tracking-wide">1. Radar Lingkungan (Input)</h2>
+            </div>
+
+            <!-- Toggle Waktu -->
+            <div class="toggle-container">
+                <div id="btn-24h" class="toggle-btn" onclick="switchTime('24h')">Prakiraan H-24</div>
+                <div id="btn-48h" class="toggle-btn active" onclick="switchTime('48h')">Prakiraan H-48 (Puncak)</div>
+            </div>
+
+            <div class="text-xs text-[#7896af] mx-5 mb-3">Kondisi Udara Pontianak Keseluruhan:</div>
+
+            <div id="card-aqi" class="metric-card danger">
+                <div class="metric-title">Tingkat Kualitas Udara (AQI) <button class="btn-insight" onclick="showInsight('aqi')">?</button></div>
+                <div id="val-aqi" class="metric-val text-[#ff4d5c] text-3xl">347</div>
+                <div id="stat-aqi" class="text-xs text-[#ff4d5c] font-bold mt-1">Status: BERBAHAYA (Darurat)</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Polutan Debu Halus (PM2.5) <button class="btn-insight" onclick="showInsight('pm25')">?</button></div>
+                <div id="val-pm25" class="metric-val text-white">238 µg/m³</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-title">Kecepatan & Arah Angin <button class="btn-insight" onclick="showInsight('wind')">?</button></div>
+                <div id="val-wind" class="metric-val text-[#38bdf8]">Tenggara (15 km/j)</div>
+            </div>
+
+            <!-- Tingkat Keyakinan AI -->
+            <div class="mt-auto m-5 p-4 rounded-lg bg-gradient-to-r from-[#116c6944] to-[#0d2b3d60] border border-[#49e8a455]">
+                <div class="flex justify-between items-center">
+                    <span class="text-[#a6e5d0] text-[11px] font-bold tracking-wider">SKOR KEYAKINAN AI (XGBoost)</span>
+                    <button class="btn-insight !w-5 !h-5 !text-[10px]" onclick="showInsight('ai')">?</button>
+                </div>
+                <div id="val-ai" class="text-2xl font-bold text-[#66f2b7] mono mt-1">91.6%</div>
+                <p class="text-[10px] text-[#90adbd] mt-1">Sistem menganalisis 1.205 rekam medis historis.</p>
+            </div>
+        </aside>
+
+        <section class="panel">
+            <div class="panel-header flex justify-between items-center">
+                <h2 class="text-[14px] text-[#eef8ff] font-bold m-0 uppercase tracking-wide">2. Peta Ancaman Spasial (Proses AI)</h2>
+                <span class="bg-[#196c9133] border border-[#196c91] text-[#71d5f7] px-2 py-1 rounded text-[9px] font-bold tracking-widest mono">LIVE MAPS</span>
+            </div>
+            <div class="map-wrapper">
+                <div id="map"></div>
+                <!-- Keterangan Legend Peta -->
+                <div class="absolute bottom-5 left-5 z-[400] bg-[#051321ee] border border-[#ff894847] p-2.5 rounded-md">
+                    <div class="text-[10px] text-[#bdcddb] flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-[radial-gradient(circle,rgba(255,70,57,1)_0%,rgba(255,114,44,0)_100%)]"></div>
+                        Zona Asap Pekat (Heatmap)
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <aside class="panel">
+            <div class="panel-header">
+                <h2 class="text-[14px] text-[#eef8ff] font-bold m-0 uppercase tracking-wide">3. Distribusi (Output & Aksi)</h2>
+            </div>
+
+            <div class="px-5 pt-4 text-xs text-[#8fa9bd]">Fasilitas Kesehatan Terpilih:</div>
+            
+            <div id="context-box" class="context-box">
+                <div id="fac-name" class="text-sm font-bold text-white uppercase">Puskesmas Perumnas I</div>
+                <div class="text-xs text-[#cbd5e1] mt-1">Kec. Pontianak Barat</div>
+                <div class="mt-3 inline-block px-2 py-1 bg-[#ff4d5c33] border border-[#ff4d5c] text-[#ff9aa3] text-[10px] font-bold rounded">
+                    ESTIMASI: <span id="fac-pat">300</span> PASIEN BARU
+                </div>
+            </div>
+
+            <div>
+                <div class="supply-item">
+                    <div class="supply-icon"><i data-lucide="shield"></i></div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#c2d5e3] text-xs">Masker Medis (N95)</span>
+                            <button class="btn-insight !w-4 !h-4 !text-[9px]" onclick="showInsight('mask')">?</button>
+                        </div>
+                        <div id="log-mask" class="text-white text-lg font-bold mono">1.920 Pcs</div>
+                    </div>
+                </div>
+                <div class="supply-item">
+                    <div class="supply-icon"><i data-lucide="wind"></i></div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#c2d5e3] text-xs">Obat Uap (Nebulizer)</span>
+                            <button class="btn-insight !w-4 !h-4 !text-[9px]" onclick="showInsight('neb')">?</button>
+                        </div>
+                        <div id="log-neb" class="text-white text-lg font-bold mono">180 Ampul</div>
+                    </div>
+                </div>
+                <div class="supply-item border-none">
+                    <div class="supply-icon"><i data-lucide="cylinder"></i></div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#c2d5e3] text-xs">Tabung Oksigen (6m³)</span>
+                            <button class="btn-insight !w-4 !h-4 !text-[9px]" onclick="showInsight('oxy')">?</button>
+                        </div>
+                        <div id="log-oxy" class="text-white text-lg font-bold mono">6 Tabung</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-5 mt-2">
+                <p class="text-[10px] text-[#718ca3]">*Angka di atas sudah ditambahkan Buffer Stock (Cadangan Darurat) sebesar 20% sesuai Pedoman Kemenkes RI.</p>
+            </div>
+
+            <button class="action-btn mt-auto" onclick="showDispatchModal()">
+                ✅ SETUJUI & TERBITKAN SURAT JALAN
+            </button>
+        </aside>
+    </main>
+
+    <!-- Modal Insight Edukasi -->
+    <div id="modal-insight" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <i data-lucide="lightbulb" class="text-[#38bdf8]"></i> <span id="insight-title">Judul</span>
+            </div>
+            <div id="insight-body" class="modal-body">Isi penjelasan...</div>
+            <button class="modal-close" onclick="closeModal('modal-insight')">SAYA MENGERTI</button>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Persetujuan -->
+    <div id="modal-dispatch" class="modal-overlay">
+        <div class="modal-box !border-[#49e8a4]">
+            <div class="modal-header !text-[#49e8a4]">
+                <i data-lucide="check-circle"></i> Instruksi Terkirim
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-4">Surat Perintah Jalan telah diterbitkan secara otomatis dan masuk ke ponsel Kepala Gudang Farmasi Provinsi.</p>
+                <div class="p-3 bg-[#0f291e] border border-[#16603d] rounded text-[#49e8a4] mono text-xs">
+                    TRUK LOGISTIK DALAM STATUS PERSIAPAN BERANGKAT.
+                </div>
+            </div>
+            <button class="modal-close !bg-[#49e8a4] !text-black hover:!bg-[#3be09b]" onclick="closeModal('modal-dispatch')">TUTUP JENDELA</button>
+        </div>
+    </div>
+
+    <!-- Script Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        lucide.createIcons();
+
+        // 1. DATA MASTER LINGKUNGAN (H-24 vs H-48)
+        const envData = {
+            '24h': {
+                aqi: "215", stat: "SANGAT TIDAK SEHAT", pm25: "145 µg/m³", wind: "Timur (10 km/j)", ai: "88.4%",
+                cardClass: "metric-card warning", statColor: "text-[#eab308]", valColor: "text-[#eab308]",
+                heatmapRadius: 2000, heatmapOpacity: 0.3
+            },
+            '48h': {
+                aqi: "347", stat: "BERBAHAYA (Darurat)", pm25: "238 µg/m³", wind: "Tenggara (15 km/j)", ai: "91.6%",
+                cardClass: "metric-card danger", statColor: "text-[#ff4d5c]", valColor: "text-[#ff4d5c]",
+                heatmapRadius: 4000, heatmapOpacity: 0.6
+            }
+        };
+
+        // 2. DATA MASTER FASILITAS PETA (23 Titik Real Lokasi Pontianak)
+        const facilities = [
+            // Pontianak Barat
+            { id: "perumnas", lat: -0.0227, lng: 109.3144, name: "Puskesmas Perumnas I", dist: "Pontianak Barat", type: "Puskesmas" },
+            { id: "perumnas_2", lat: -0.0250, lng: 109.3100, name: "Puskesmas Perumnas II", dist: "Pontianak Barat", type: "Puskesmas" },
+            { id: "pal_tiga", lat: -0.0280, lng: 109.3200, name: "Puskesmas Pal Tiga", dist: "Pontianak Barat", type: "Puskesmas" },
+            { id: "nipah_kuning", lat: -0.0150, lng: 109.3000, name: "Puskesmas Nipah Kuning", dist: "Pontianak Barat", type: "Puskesmas" },
+            { id: "rsud_kota", lat: -0.0200, lng: 109.3150, name: "RSUD SS Mohamad Alkadrie", dist: "Pontianak Barat", type: "Rumah Sakit" },
+            
+            // Pontianak Kota
+            { id: "antonius", lat: -0.0315, lng: 109.3316, name: "RSU St. Antonius", dist: "Pontianak Kota", type: "Rumah Sakit" },
+            { id: "alianyang", lat: -0.0350, lng: 109.3250, name: "Puskesmas Alianyang", dist: "Pontianak Kota", type: "Puskesmas" },
+            { id: "karya_mulia", lat: -0.0380, lng: 109.3350, name: "Puskesmas Karya Mulia", dist: "Pontianak Kota", type: "Puskesmas" },
+            
+            // Pontianak Selatan (Area Kritis dekat angin Tenggara)
+            { id: "untan", lat: -0.0485, lng: 109.3456, name: "RS Universitas Tanjungpura", dist: "Pontianak Selatan", type: "Rumah Sakit" },
+            { id: "purnama", lat: -0.0500, lng: 109.3350, name: "Puskesmas Purnama", dist: "Pontianak Selatan", type: "Puskesmas" },
+            { id: "gang_sehat", lat: -0.0550, lng: 109.3400, name: "Puskesmas Gang Sehat", dist: "Pontianak Selatan", type: "Puskesmas" },
+            { id: "mitra_medika", lat: -0.0450, lng: 109.3500, name: "RS Mitra Medika", dist: "Pontianak Selatan", type: "Rumah Sakit" },
+            { id: "abk", lat: -0.0420, lng: 109.3400, name: "RS Anugerah Bunda", dist: "Pontianak Selatan", type: "Rumah Sakit" },
+            
+            // Pontianak Tenggara (Area Paling Kritis / Sumber Asap)
+            { id: "soedarso", lat: -0.0573, lng: 109.3585, name: "RSUD dr. Soedarso", dist: "Pontianak Tenggara", type: "Rumah Sakit" },
+            { id: "paris_2", lat: -0.0650, lng: 109.3600, name: "Puskesmas Parit H. Husin II", dist: "Pontianak Tenggara", type: "Puskesmas" },
+            
+            // Pontianak Timur (Area Kritis Jalur Asap)
+            { id: "kampung", lat: -0.0305, lng: 109.3510, name: "Puskesmas Kampung Dalam", dist: "Pontianak Timur", type: "Puskesmas" },
+            { id: "tanjung_hulu", lat: -0.0350, lng: 109.3650, name: "Puskesmas Tanjung Hulu", dist: "Pontianak Timur", type: "Puskesmas" },
+            { id: "tambelan_sampit", lat: -0.0250, lng: 109.3550, name: "Puskesmas Tambelan Sampit", dist: "Pontianak Timur", type: "Puskesmas" },
+            { id: "rs_yarsi", lat: -0.0280, lng: 109.3600, name: "RS Yarsi Pontianak", dist: "Pontianak Timur", type: "Rumah Sakit" },
+            
+            // Pontianak Utara (Relatif lebih aman / Jauh dari sumber)
+            { id: "siantan", lat: 0.0076, lng: 109.3338, name: "Puskesmas Siantan Hilir", dist: "Pontianak Utara", type: "Puskesmas" },
+            { id: "siantan_hulu", lat: 0.0200, lng: 109.3400, name: "Puskesmas Siantan Hulu", dist: "Pontianak Utara", type: "Puskesmas" },
+            { id: "siantan_tengah", lat: 0.0150, lng: 109.3350, name: "Puskesmas Siantan Tengah", dist: "Pontianak Utara", type: "Puskesmas" },
+            { id: "khatulistiwa", lat: 0.0250, lng: 109.3200, name: "Puskesmas Khatulistiwa", dist: "Pontianak Utara", type: "Puskesmas" }
+        ];
+
+        // 3. DATA MASTER KEBUTUHAN LOGISTIK (H-24 vs H-48 per Fasilitas)
+        const logData = {
+            // Pontianak Barat
+            'perumnas': {
+                '24h': { pat: 120, mask: "720 Pcs", neb: "60 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 300, mask: "1.920 Pcs", neb: "180 Ampul", oxy: "6 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'perumnas_2': {
+                '24h': { pat: 110, mask: "660 Pcs", neb: "55 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 280, mask: "1.792 Pcs", neb: "168 Ampul", oxy: "5 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'pal_tiga': {
+                '24h': { pat: 90, mask: "540 Pcs", neb: "45 Ampul", oxy: "1 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 220, mask: "1.408 Pcs", neb: "132 Ampul", oxy: "4 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'nipah_kuning': {
+                '24h': { pat: 70, mask: "420 Pcs", neb: "35 Ampul", oxy: "1 Tabung", boxClass: "safe", boxBorder: "#49e8a4" },
+                '48h': { pat: 180, mask: "1.152 Pcs", neb: "108 Ampul", oxy: "3 Tabung", boxClass: "warning", boxBorder: "#eab308" }
+            },
+            'rsud_kota': {
+                '24h': { pat: 180, mask: "1.080 Pcs", neb: "90 Ampul", oxy: "12 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" },
+                '48h': { pat: 420, mask: "2.688 Pcs", neb: "252 Ampul", oxy: "30 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+
+            // Pontianak Kota
+            'antonius': {
+                '24h': { pat: 150, mask: "900 Pcs", neb: "75 Ampul", oxy: "10 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 350, mask: "2.240 Pcs", neb: "210 Ampul", oxy: "25 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'alianyang': {
+                '24h': { pat: 85, mask: "510 Pcs", neb: "42 Ampul", oxy: "1 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 210, mask: "1.344 Pcs", neb: "126 Ampul", oxy: "4 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'karya_mulia': {
+                '24h': { pat: 80, mask: "480 Pcs", neb: "40 Ampul", oxy: "1 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 195, mask: "1.248 Pcs", neb: "117 Ampul", oxy: "3 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+
+            // Pontianak Selatan
+            'untan': {
+                '24h': { pat: 130, mask: "780 Pcs", neb: "65 Ampul", oxy: "8 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 310, mask: "1.984 Pcs", neb: "186 Ampul", oxy: "20 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'purnama': {
+                '24h': { pat: 110, mask: "660 Pcs", neb: "55 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 270, mask: "1.728 Pcs", neb: "162 Ampul", oxy: "5 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'gang_sehat': {
+                '24h': { pat: 145, mask: "870 Pcs", neb: "72 Ampul", oxy: "3 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 340, mask: "2.176 Pcs", neb: "204 Ampul", oxy: "6 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'mitra_medika': {
+                '24h': { pat: 160, mask: "960 Pcs", neb: "80 Ampul", oxy: "11 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" },
+                '48h': { pat: 380, mask: "2.432 Pcs", neb: "228 Ampul", oxy: "28 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'abk': {
+                '24h': { pat: 120, mask: "720 Pcs", neb: "60 Ampul", oxy: "7 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 290, mask: "1.856 Pcs", neb: "174 Ampul", oxy: "18 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+
+            // Pontianak Tenggara
+            'soedarso': { 
+                '24h': { pat: 350, mask: "2.100 Pcs", neb: "175 Ampul", oxy: "28 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" },
+                '48h': { pat: 780, mask: "4.992 Pcs", neb: "468 Ampul", oxy: "70 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'paris_2': {
+                '24h': { pat: 160, mask: "960 Pcs", neb: "80 Ampul", oxy: "3 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" },
+                '48h': { pat: 390, mask: "2.496 Pcs", neb: "234 Ampul", oxy: "7 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+
+            // Pontianak Timur
+            'kampung': {
+                '24h': { pat: 125, mask: "750 Pcs", neb: "62 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 305, mask: "1.952 Pcs", neb: "183 Ampul", oxy: "6 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'tanjung_hulu': {
+                '24h': { pat: 140, mask: "840 Pcs", neb: "70 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 330, mask: "2.112 Pcs", neb: "198 Ampul", oxy: "6 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'tambelan_sampit': {
+                '24h': { pat: 95, mask: "570 Pcs", neb: "47 Ampul", oxy: "1 Tabung", boxClass: "warning", boxBorder: "#eab308" },
+                '48h': { pat: 245, mask: "1.568 Pcs", neb: "147 Ampul", oxy: "4 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+            'rs_yarsi': {
+                '24h': { pat: 180, mask: "1.080 Pcs", neb: "90 Ampul", oxy: "12 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" },
+                '48h': { pat: 410, mask: "2.624 Pcs", neb: "246 Ampul", oxy: "29 Tabung", boxClass: "danger", boxBorder: "#ff4d5c" }
+            },
+
+            // Pontianak Utara
+            'siantan': {
+                '24h': { pat: 40, mask: "240 Pcs", neb: "20 Ampul", oxy: "1 Tabung", boxClass: "safe", boxBorder: "#49e8a4" },
+                '48h': { pat: 110, mask: "704 Pcs", neb: "66 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" }
+            },
+            'siantan_hulu': {
+                '24h': { pat: 30, mask: "180 Pcs", neb: "15 Ampul", oxy: "0 Tabung", boxClass: "safe", boxBorder: "#49e8a4" },
+                '48h': { pat: 90, mask: "576 Pcs", neb: "54 Ampul", oxy: "1 Tabung", boxClass: "warning", boxBorder: "#eab308" }
+            },
+            'siantan_tengah': {
+                '24h': { pat: 45, mask: "270 Pcs", neb: "22 Ampul", oxy: "1 Tabung", boxClass: "safe", boxBorder: "#49e8a4" },
+                '48h': { pat: 125, mask: "800 Pcs", neb: "75 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" }
+            },
+            'khatulistiwa': {
+                '24h': { pat: 55, mask: "330 Pcs", neb: "27 Ampul", oxy: "1 Tabung", boxClass: "safe", boxBorder: "#49e8a4" },
+                '48h': { pat: 140, mask: "896 Pcs", neb: "84 Ampul", oxy: "2 Tabung", boxClass: "warning", boxBorder: "#eab308" }
+            }
+        };
+
+        // 4. DATA EDUKASI INSIGHTS UNTUK PIMPINAN
+        const insights = {
+            'aqi': { t: "Indeks Kualitas Udara (AQI)", d: "Adalah standar global pengukur racun di udara. Angka di atas 300 berarti udara <b>Sangat Berbahaya (Hazardous)</b>. Jika dihirup dalam 2 jam berturut-turut, orang dewasa sehat akan pusing, dan balita berisiko tinggi terkena radang paru (Pneumonia). Oleh karena itu, persiapan tabung oksigen mutlak diperlukan." },
+            'pm25': { t: "Polutan Debu Halus PM 2.5", d: "Ini adalah partikel sisa pembakaran hutan yang ukurannya sangat kecil (lebih kecil dari helaian rambut). Masker kain biasa tembus oleh debu ini. Ia masuk langsung ke aliran darah, yang memicu lonjakan pasien asma. Inilah alasan AI merekomendasikan stok Masker N95 khusus, bukan masker kain." },
+            'wind': { t: "Arah dan Kecepatan Angin", d: "Data ini adalah 'Kompas' bagi AI. Jika angin kencang bergerak dari Tenggara (lokasi hotspot Karhutla di Kubu Raya) menuju arah kota (Barat/Selatan), AI akan memfokuskan pengiriman oksigen ke puskesmas/RS yang berada tepat di jalur angin tersebut." },
+            'ai': { t: "Skor Keyakinan Komputer (XGBoost)", d: "Angka 91.6% ini berarti dari 100 kejadian masa lalu (data historis 5 tahun Dinkes Kalbar), tebakan komputer ini benar sekitar 91 kali. Algoritma mencari pola kemiripan cuaca hari ini dengan pola kejadian membludaknya pasien di tahun-tahun sebelumnya." },
+            'mask': { t: "Kenapa Masker N95 Sebanyak Ini?", d: "AI menghitung 80% dari prediksi pasien akan bergejala Ringan. Masker ini untuk dibagikan secara gratis di Puskesmas, agar pasien ringan tidak berubah menjadi pasien parah karena menghirup asap di jalan saat pulang ke rumah." },
+            'neb': { t: "Ampul Nebulizer (Terapi Uap)", d: "AI menghitung 15% dari total prediksi pasien adalah kelompok Sedang (penderita asma yang kambuh). Obat cair ini akan dimasukkan ke alat uap Puskesmas untuk melegakan paru-paru mereka agar tidak perlu dirujuk ke Rumah Sakit." },
+            'oxy': { t: "Tabung Oksigen Medis", d: "Diperuntukkan untuk 5% kelompok Berat (Balita/Lansia Hipoksia). Jika stok ini kosong walau hanya 1 hari, risiko kematian sangat tinggi. AI menghitung jumlah tabung agar cukup menahan napas pasien IGD sebelum ambulans rujukan tiba." }
+        };
+
+        // State Global
+        let currentTime = '48h';
+        let currentFacId = 'perumnas'; // Default terpilih
+
+        // INIT LEAFLET MAP
+        const map = L.map('map', { zoomControl: false }).setView([-0.035, 109.34], 12);
+        
+        // Base Map Dark Mode dari CartoDB
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap & CartoDB'
+        }).addTo(map);
+
+        // Layer Grup untuk Heatmap Asap
+        let smogCircle = L.circle([-0.05, 109.38], { // Berasal dari Tenggara
+            color: 'transparent',
+            fillColor: '#ff2a00',
+            fillOpacity: envData['48h'].heatmapOpacity,
+            radius: envData['48h'].heatmapRadius
+        }).addTo(map);
+
+        // Marker Rumah Sakit & Puskesmas
+        const markerMap = {}; // Simpan referensi marker
+        facilities.forEach(fac => {
+            // Icon Kustom (RS Merah, Puskes Hijau)
+            const iconColor = fac.type === "Rumah Sakit" ? "#ff4d5c" : "#49e8a4";
+            const markerHtml = `<div style="background:#1a2332; border:2px solid ${iconColor}; border-radius:50%; width:20px; height:20px; display:flex; justify-content:center; align-items:center; color:${iconColor}; font-weight:bold; box-shadow: 0 0 10px ${iconColor};">+</div>`;
+            
+            const customIcon = L.divIcon({ html: markerHtml, className: 'custom-icon', iconSize: [20, 20] });
+            const marker = L.marker([fac.lat, fac.lng], { icon: customIcon }).addTo(map);
+            
+            marker.bindPopup(`<b>${fac.name}</b><br>${fac.dist}`);
+            
+            marker.on('click', () => {
+                selectFacility(fac.id);
+            });
+
+            markerMap[fac.id] = marker;
+        });
+
+        // Buka popup fasilitas default
+        setTimeout(() => markerMap[currentFacId].openPopup(), 500);
+
+        // FUNGSI GANTI TIMEFRAME (H-24 / H-48)
+        window.switchTime = function(timeStr) {
+            currentTime = timeStr;
+            const data = envData[timeStr];
+
+            // Update Tombol UI
+            document.getElementById('btn-24h').classList.toggle('active', timeStr === '24h');
+            document.getElementById('btn-48h').classList.toggle('active', timeStr === '48h');
+
+            // Fungsi Animasi Ganti Angka
+            const triggerAnim = (id, newVal) => {
+                const el = document.getElementById(id);
+                el.classList.remove('fade-update');
+                void el.offsetWidth; // trigger reflow
+                el.innerText = newVal;
+                el.classList.add('fade-update');
+            };
+
+            // Update Data Lingkungan
+            triggerAnim('val-aqi', data.aqi);
+            triggerAnim('val-pm25', data.pm25);
+            triggerAnim('val-wind', data.wind);
+            triggerAnim('val-ai', data.ai);
+            
+            // Update Status AQI
+            const statAqiEl = document.getElementById('stat-aqi');
+            statAqiEl.innerText = `Status: ${data.stat}`;
+            statAqiEl.className = `text-xs font-bold mt-1 ${data.statColor} fade-update`;
+
+            const cardAqiEl = document.getElementById('card-aqi');
+            cardAqiEl.className = data.cardClass;
+
+            // Update Peta (Ukuran Asap membesar di H-48)
+            smogCircle.setRadius(data.heatmapRadius);
+            smogCircle.setStyle({ fillOpacity: data.heatmapOpacity });
+
+            // Update Logistik Fasilitas Terpilih
+            selectFacility(currentFacId);
+        };
+
+        // FUNGSI PILIH FASILITAS
+        window.selectFacility = function(facId) {
+            currentFacId = facId;
+            const facInfo = facilities.find(f => f.id === facId);
+            const data = logData[facId][currentTime];
+
+            // Animasi Panel Logistik
+            const triggerAnim = (id, newVal) => {
+                const el = document.getElementById(id);
+                el.classList.remove('fade-update');
+                void el.offsetWidth;
+                el.innerHTML = newVal; // Bisa HTML
+                el.classList.add('fade-update');
+            };
+
+            triggerAnim('fac-name', `${facInfo.name} <span style="font-size:10px; font-weight:normal; color:#8fa9bd;">(${facInfo.type})</span>`);
+            document.querySelector('#context-box div:nth-child(2)').innerText = `Kec. ${facInfo.dist}`;
+            
+            triggerAnim('fac-pat', data.pat);
+            triggerAnim('log-mask', data.mask);
+            triggerAnim('log-neb', data.neb);
+            triggerAnim('log-oxy', data.oxy);
+
+            // Ganti warna box sesuai status
+            const box = document.getElementById('context-box');
+            box.style.borderLeftColor = data.boxBorder;
+            box.style.background = `rgba(${data.boxBorder === '#ff4d5c' ? '255,77,92' : (data.boxBorder === '#eab308' ? '234,179,8' : '73,232,164')}, 0.15)`;
+        };
+
+        // FUNGSI MODAL INSIGHT (Edukasi)
+        window.showInsight = function(key) {
+            const insight = insights[key];
+            document.getElementById('insight-title').innerText = insight.t;
+            document.getElementById('insight-body').innerHTML = insight.d;
+            document.getElementById('modal-insight').classList.add('active');
+        };
+
+        window.showDispatchModal = function() {
+            document.getElementById('modal-dispatch').classList.add('active');
+        };
+
+        window.closeModal = function(id) {
+            document.getElementById(id).classList.remove('active');
+        };
+    </script>
+</body>
+</html>
