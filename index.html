@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ISPA-Predict Command Center V2</title>
+    <title>RespirAI Command Center V2</title>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -248,8 +248,8 @@
                 <i data-lucide="cross"></i>
             </div>
             <div>
-                <div class="text-[10px] text-[#74cfff] uppercase tracking-widest mono mb-1">Gugus Tugas Smart City Kalbar</div>
-                <h1 class="text-xl font-bold text-white m-0 tracking-wide">ISPA-Predict Command Center</h1>
+                <div class="text-[10px] text-[#74cfff] uppercase tracking-widest mono mb-1">Gugus Tugas Smart City Kalimantan</div>
+                <h1 class="text-xl font-bold text-white m-0 tracking-wide">RespirAI Command Center</h1>
             </div>
         </div>
         <div class="flex items-center gap-6">
@@ -273,7 +273,7 @@
                 <div id="btn-48h" class="toggle-btn active" onclick="switchTime('48h')">Prakiraan H-48 (Puncak)</div>
             </div>
 
-            <div class="text-xs text-[#7896af] mx-5 mb-3">Kondisi Udara Pontianak Keseluruhan:</div>
+            <div class="text-xs text-[#7896af] mx-5 mb-3">Kondisi Udara Regional (Kalimantan):</div>
 
             <div id="card-aqi" class="metric-card danger">
                 <div class="metric-title">Tingkat Kualitas Udara (AQI) <button class="btn-insight" onclick="showInsight('aqi')">?</button></div>
@@ -298,7 +298,7 @@
                     <button class="btn-insight !w-5 !h-5 !text-[10px]" onclick="showInsight('ai')">?</button>
                 </div>
                 <div id="val-ai" class="text-2xl font-bold text-[#66f2b7] mono mt-1">91.6%</div>
-                <p class="text-[10px] text-[#90adbd] mt-1">Sistem menganalisis 1.205 rekam medis historis.</p>
+                <p class="text-[10px] text-[#90adbd] mt-1">Sistem menganalisis rekam medis historis regional.</p>
             </div>
         </aside>
 
@@ -572,8 +572,8 @@
         const insights = {
             'aqi': { t: "Indeks Kualitas Udara (AQI)", d: "Adalah standar global pengukur racun di udara. Angka di atas 300 berarti udara <b>Sangat Berbahaya (Hazardous)</b>. Jika dihirup dalam 2 jam berturut-turut, orang dewasa sehat akan pusing, dan balita berisiko tinggi terkena radang paru (Pneumonia). Oleh karena itu, persiapan tabung oksigen mutlak diperlukan." },
             'pm25': { t: "Polutan Debu Halus PM 2.5", d: "Ini adalah partikel sisa pembakaran hutan yang ukurannya sangat kecil (lebih kecil dari helaian rambut). Masker kain biasa tembus oleh debu ini. Ia masuk langsung ke aliran darah, yang memicu lonjakan pasien asma. Inilah alasan AI merekomendasikan stok Masker N95 khusus, bukan masker kain." },
-            'wind': { t: "Arah dan Kecepatan Angin", d: "Data ini adalah 'Kompas' bagi AI. Jika angin kencang bergerak dari Tenggara (lokasi hotspot Karhutla di Kubu Raya) menuju arah kota (Barat/Selatan), AI akan memfokuskan pengiriman oksigen ke puskesmas/RS yang berada tepat di jalur angin tersebut." },
-            'ai': { t: "Skor Keyakinan Komputer (XGBoost)", d: "Angka 91.6% ini berarti dari 100 kejadian masa lalu (data historis 5 tahun Dinkes Kalbar), tebakan komputer ini benar sekitar 91 kali. Algoritma mencari pola kemiripan cuaca hari ini dengan pola kejadian membludaknya pasien di tahun-tahun sebelumnya." },
+            'wind': { t: "Arah dan Kecepatan Angin", d: "Data ini adalah 'Kompas' bagi AI. Jika angin kencang bergerak dari arah hotspot Karhutla menuju arah pemukiman padat, AI akan memfokuskan pengiriman oksigen ke puskesmas/RS yang berada tepat di jalur angin tersebut." },
+            'ai': { t: "Skor Keyakinan Komputer (XGBoost)", d: "Angka 91.6% ini berarti dari 100 kejadian masa lalu (data historis 5 tahun), tebakan AI ini benar sekitar 91 kali. Algoritma mencari pola kemiripan cuaca hari ini dengan pola kejadian membludaknya pasien di tahun-tahun sebelumnya." },
             'mask': { t: "Kenapa Masker N95 Sebanyak Ini?", d: "AI menghitung 80% dari prediksi pasien akan bergejala Ringan. Masker ini untuk dibagikan secara gratis di Puskesmas, agar pasien ringan tidak berubah menjadi pasien parah karena menghirup asap di jalan saat pulang ke rumah." },
             'neb': { t: "Ampul Nebulizer (Terapi Uap)", d: "AI menghitung 15% dari total prediksi pasien adalah kelompok Sedang (penderita asma yang kambuh). Obat cair ini akan dimasukkan ke alat uap Puskesmas untuk melegakan paru-paru mereka agar tidak perlu dirujuk ke Rumah Sakit." },
             'oxy': { t: "Tabung Oksigen Medis", d: "Diperuntukkan untuk 5% kelompok Berat (Balita/Lansia Hipoksia). Jika stok ini kosong walau hanya 1 hari, risiko kematian sangat tinggi. AI menghitung jumlah tabung agar cukup menahan napas pasien IGD sebelum ambulans rujukan tiba." }
